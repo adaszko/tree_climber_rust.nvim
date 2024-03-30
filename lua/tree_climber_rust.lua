@@ -106,31 +106,29 @@ local function climb_tree(current, parent, get_node_text, get_query_captures)
         if #current == 1 then
             -- There's just one element selected => select it and its preceding/trailing comma
             local node = current[1]
-            local prev_sibling = node:prev_sibling()
-            local next_sibling = node:next_sibling()
-            if get_node_text(next_sibling) == ")" then
+            if next_sibling_text(node) == ")" then
                 -- Last element => select it and it's optional preceding comma
-                if get_node_text(prev_sibling) == "," then
-                    return {prev_sibling, node}
+                if prev_sibling_text(node) == "," then
+                    return {node:prev_sibling(), node}
                 else
                     return {node}
                 end
-            elseif get_node_text(prev_sibling) == "(" then
+            elseif prev_sibling_text(node) == "(" then
                 -- First element => select it and it's optional trailing comma
-                if get_node_text(next_sibling) == "," then
-                    return {node, next_sibling}
+                if next_sibling_text(node) == "," then
+                    return {node, node:next_sibling()}
                 else
                     return {node}
                 end
             else
                 -- Middle element => select it and it's optional trailing comma
-                if get_node_text(next_sibling) == "," then
-                    return {node, next_sibling}
+                if next_sibling_text(node) == "," then
+                    return {node, node:next_sibling()}
                 else
                     return {node}
                 end
             end
-        elseif get_node_text(current[1]:prev_sibling()) == "(" and get_node_text(current[#current]:next_sibling()) == ")" then
+        elseif prev_sibling_text(current[1]) == "(" and next_sibling_text(current[#current]) == ")" then
             -- There's more stuff selected => select entire tuple_expression
             return {parent}
         else
@@ -144,31 +142,29 @@ local function climb_tree(current, parent, get_node_text, get_query_captures)
         if #current == 1 then
             -- There's just one element selected => select it and its preceding/trailing comma
             local node = current[1]
-            local prev_sibling = node:prev_sibling()
-            local next_sibling = node:next_sibling()
-            if get_node_text(next_sibling) == ")" then
+            if next_sibling_text(node) == ")" then
                 -- Last element => select it and it's optional preceding comma
-                if get_node_text(prev_sibling) == "," then
-                    return {prev_sibling, node}
+                if prev_sibling_text(node) == "," then
+                    return {node:prev_sibling(), node}
                 else
                     return {node}
                 end
-            elseif get_node_text(prev_sibling) == "(" then
+            elseif prev_sibling_text(node) == "(" then
                 -- First element => select it and it's optional trailing comma
-                if get_node_text(next_sibling) == "," then
-                    return {node, next_sibling}
+                if next_sibling_text(node) == "," then
+                    return {node, node:next_sibling()}
                 else
                     return {node}
                 end
             else
                 -- Middle element => select it and it's optional trailing comma
-                if get_node_text(next_sibling) == "," then
-                    return {node, next_sibling}
+                if next_sibling_text(node) == "," then
+                    return {node, node:next_sibling()}
                 else
                     return {node}
                 end
             end
-        elseif get_node_text(current[1]:prev_sibling()) == "(" and get_node_text(current[#current]:next_sibling()) == ")" then
+        elseif prev_sibling_text(current[1]) == "(" and next_sibling_text(current[#current]) == ")" then
             -- There's more stuff selected => select entire tuple_type
             return {parent}
         else
@@ -184,31 +180,29 @@ local function climb_tree(current, parent, get_node_text, get_query_captures)
         if #current == 1 then
             -- There's just one element selected => select it and its preceding/trailing comma
             local node = current[1]
-            local prev_sibling = node:prev_sibling()
-            local next_sibling = node:next_sibling()
-            if get_node_text(next_sibling) == ")" then
+            if next_sibling_text(node) == ")" then
                 -- Last element => select it and it's optional preceding comma
-                if get_node_text(prev_sibling) == "," then
-                    return {prev_sibling, node}
+                if prev_sibling_text(node) == "," then
+                    return {node:prev_sibling(), node}
                 else
                     return {node}
                 end
-            elseif get_node_text(prev_sibling) == "(" then
+            elseif prev_sibling_text(node) == "(" then
                 -- First element => select it and it's optional trailing comma
-                if get_node_text(next_sibling) == "," then
-                    return {node, next_sibling}
+                if next_sibling_text(node) == "," then
+                    return {node, node:next_sibling()}
                 else
                     return {node}
                 end
             else
                 -- Middle element => select it and it's optional trailing comma
-                if get_node_text(next_sibling) == "," then
-                    return {node, next_sibling}
+                if next_sibling_text(node) == "," then
+                    return {node, node:next_sibling()}
                 else
                     return {node}
                 end
             end
-        elseif get_node_text(current[1]:prev_sibling()) == "(" and get_node_text(current[#current]:next_sibling()) == ")" then
+        elseif prev_sibling_text(current[1]) == "(" and next_sibling_text(current[#current]) == ")" then
             -- There's more stuff selected => select entire arguments
             return {parent}
         else
@@ -220,31 +214,29 @@ local function climb_tree(current, parent, get_node_text, get_query_captures)
         if #current == 1 then
             -- There's just one element selected => select it and its preceding/trailing comma
             local node = current[1]
-            local prev_sibling = node:prev_sibling()
-            local next_sibling = node:next_sibling()
-            if get_node_text(next_sibling) == ">" then
+            if next_sibling_text(node) == ">" then
                 -- Last element => select it and it's optional preceding comma
-                if get_node_text(prev_sibling) == "," then
-                    return {prev_sibling, node}
+                if prev_sibling_text(node) == "," then
+                    return {node:prev_sibling(), node}
                 else
                     return {node}
                 end
-            elseif get_node_text(prev_sibling) == "<" then
+            elseif prev_sibling_text(node) == "<" then
                 -- First element => select it and it's optional trailing comma
-                if get_node_text(next_sibling) == "," then
-                    return {node, next_sibling}
+                if next_sibling_text(node) == "," then
+                    return {node, node:next_sibling()}
                 else
                     return {node}
                 end
             else
                 -- Middle element => select it and it's optional trailing comma
-                if get_node_text(next_sibling) == "," then
-                    return {node, next_sibling}
+                if next_sibling_text(node) == "," then
+                    return {node, node:next_sibling()}
                 else
                     return {node}
                 end
             end
-        elseif get_node_text(current[1]:prev_sibling()) == "<" and get_node_text(current[#current]:next_sibling()) == ">" then
+        elseif prev_sibling_text(current[1]) == "<" and next_sibling_text(current[#current]) == ">" then
             -- There's more stuff selected => select entire arguments
             return {parent}
         else
@@ -260,31 +252,29 @@ local function climb_tree(current, parent, get_node_text, get_query_captures)
 	if #current == 1 then
             -- There's just one element selected => select it and its preceding/trailing comma
             local node = current[1]
-            local prev_sibling = node:prev_sibling()
-            local next_sibling = node:next_sibling()
-            if get_node_text(next_sibling) == "]" then
+            if next_sibling_text(node) == "]" then
                 -- Last element => select it and it's optional preceding comma
-                if get_node_text(prev_sibling) == "," then
-                    return {prev_sibling, node}
+                if prev_sibling_text(node) == "," then
+                    return {node:prev_sibling(), node}
                 else
                     return {node}
                 end
-            elseif get_node_text(prev_sibling) == "[" then
+            elseif prev_sibling_text(node) == "[" then
                 -- First element => select it and it's optional trailing comma
-                if get_node_text(next_sibling) == "," then
-                    return {node, next_sibling}
+                if next_sibling_text(node) == "," then
+                    return {node, node:next_sibling()}
                 else
                     return {node}
                 end
             else
                 -- Middle element => select it and it's optional trailing comma
-                if get_node_text(next_sibling) == "," then
-                    return {node, next_sibling}
+                if next_sibling_text(node) == "," then
+                    return {node, node:next_sibling()}
                 else
                     return {node}
                 end
             end
-        elseif get_node_text(current[1]:prev_sibling()) == "[" and get_node_text(current[#current]:next_sibling()) == "]" then
+        elseif prev_sibling_text(current[1]) == "[" and next_sibling_text(current[#current]) == "]" then
             -- There's more stuff selected => select entire arguments
             return {parent}
         else
@@ -293,9 +283,7 @@ local function climb_tree(current, parent, get_node_text, get_query_captures)
             return inner_children
         end
     elseif parent_type == 'block' then
-        local leftmost_node = current[1]
-        local rightmost_node = current[#current]
-        if prev_sibling_text(leftmost_node) == "{" and next_sibling_text(rightmost_node) == "}" then
+        if prev_sibling_text(current[1]) == "{" and next_sibling_text(current[#current]) == "}" then
             -- All children of a block are selected => select the block along with brackets
             return {parent}
         else
@@ -311,31 +299,29 @@ local function climb_tree(current, parent, get_node_text, get_query_captures)
         if #current == 1 then
             -- There's just one element selected => select it and its preceding/trailing comma
             local node = current[1]
-            local prev_sibling = node:prev_sibling()
-            local next_sibling = node:next_sibling()
-            if get_node_text(next_sibling) == ")" then
+            if next_sibling_text(node) == ")" then
                 -- Last element => select it and it's optional preceding comma
-                if get_node_text(prev_sibling) == "," then
-                    return {prev_sibling, node}
+                if prev_sibling_text(node) == "," then
+                    return {node:prev_sibling(), node}
                 else
                     return {node}
                 end
-            elseif get_node_text(prev_sibling) == "(" then
+            elseif prev_sibling_text(node) == "(" then
                 -- First element => select it and it's optional trailing comma
-                if get_node_text(next_sibling) == "," then
-                    return {node, next_sibling}
+                if next_sibling_text(node) == "," then
+                    return {node, node:next_sibling()}
                 else
                     return {node}
                 end
             else
                 -- Middle element => select it and it's optional trailing comma
-                if get_node_text(next_sibling) == "," then
-                    return {node, next_sibling}
+                if next_sibling_text(node) == "," then
+                    return {node, node:next_sibling()}
                 else
                     return {node}
                 end
             end
-        elseif get_node_text(current[1]:prev_sibling()) == "(" and get_node_text(current[#current]:next_sibling()) == ")" then
+        elseif prev_sibling_text(current[1]) == "(" and next_sibling_text(current[#current]) == ")" then
             -- There's more stuff selected => select entire arguments
             return {parent}
         else
