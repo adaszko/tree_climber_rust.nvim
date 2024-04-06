@@ -8,11 +8,13 @@
 --]]
 
 local M = {}
-
-
 local ts = require('vim.treesitter')
 local ts_utils = require("nvim-treesitter.ts_utils")
 local parsers = require("nvim-treesitter.parsers")
+
+
+---@type boolean
+local DEBUG = false
 
 
 ---@type TSNode[][]
@@ -135,7 +137,9 @@ local function climb_tree(current, parent, get_node_text, get_query_captures)
     end
 
     local parent_type = parent:type()
-    --dump(string.format("parent_type: %s", parent_type))
+    if DEBUG then
+        dump(string.format("parent_type: %s", parent_type))
+    end
     if parent_type == 'tuple_expression' or parent_type == 'tuple_type' or parent_type == 'tuple_pattern' or parent_type == 'arguments' or parent_type == 'type_arguments' or parent_type == 'array_expression' or parent_type == 'parameters' or parent_type == 'field_initializer_list' or parent_type == 'field_declaration_list' then
 	if parent:child_count() == 3 and (parent_type == 'arguments' or parent_type == 'type_arguments' or parent_type == 'array_expression' or parent_type == 'parameters') then
 	    return {parent}
@@ -268,9 +272,13 @@ M.select_incremental = function()
         end
 
         assert(not parent:equal(node))
-        --dump('current:', map(current, function (n) return n:type() end))
+        if DEBUG then
+            dump('current:', map(current, function (n) return n:type() end))
+        end
         local next = climb_tree(current, parent, get_node_text, get_query_captures)
-        --dump('next:', map(next, function (n) return n:type() end))
+        if DEBUG then
+            dump('next:', map(next, function (n) return n:type() end))
+        end
         assert(#next >= 1)
 
         if not node_tables_equal(next, current) then
@@ -278,7 +286,9 @@ M.select_incremental = function()
             local current_start_row, current_start_col, current_end_row, current_end_col = get_selection(current[1], current[#current])
             local same_selection = (next_start_row == current_start_row and next_start_col == current_start_col and next_end_row == current_end_row and next_end_col == current_end_col)
 
-            --dump("same_selection", same_selection)
+            if DEBUG then
+                dump("same_selection", same_selection)
+            end
 
             if not same_selection then
                 select_nodes(next[1], next[#next])
