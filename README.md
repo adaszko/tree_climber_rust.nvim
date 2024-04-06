@@ -22,16 +22,16 @@ vim.g.rustaceanvim = {
 }
 ```
 
-# Related projects
+# Prior work
 
 All of these below work well but do more coarse-grained jumps due to being language-agnostic and relying on
-tree-sitter's grammars to define jump points.
+tree-sitter grammars to define jump points.
 
- * [Neovim's builtin incremental selection](https://github.com/nvim-treesitter/nvim-treesitter#incremental-selection)
+ * [tree-sitter's builtin incremental selection](https://github.com/nvim-treesitter/nvim-treesitter#incremental-selection)
 
- * [syntax-tree-surfer](https://github.com/ziontee113/syntax-tree-surfer)
-    * `syntax-tree-surfer` implements walking the syntax tree in all directions whereas this pluging only does
-      walking upwards to keep cognitive load low while maximizing utility at the same time
+ * [syntax-tree-surfer](https://github.com/ziontee113/syntax-tree-surfer) implements walking the syntax tree
+   in all directions whereas this pluging only does walking upwards to keep cognitive load low while
+   maximizing utility at the same time
 
  * [Helix's builtin `expand_selection`, `shrink_selection`, `select_prev_sibling`, `select_next_sibling`](https://docs.helix-editor.com/keymap.html)
     * Demo: [Navigating the syntax tree with helix](https://www.youtube.com/watch?v=8BikrCguI6M)
