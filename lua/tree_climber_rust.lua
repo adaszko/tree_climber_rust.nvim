@@ -17,7 +17,70 @@ local parsers = require("nvim-treesitter.parsers")
 local DEBUG = false
 
 
----@type TSNode[][]
+---@alias Selection table<string, any>
+
+
+---@param start_row number
+---@param start_col number
+---@param end_row number
+---@param end_col number
+---@return Selection
+local function make_subnode_selection(start_row, start_col, end_row, end_col)
+    return {
+        variant = "subnode",
+        payload = {
+            start_row = start_row,
+            start_col = start_col,
+            end_row = end_row,
+            end_col = end_col,
+        },
+    }
+end
+
+
+---@param nodes TSNode[]
+---@return Selection
+local function make_nodes_selection(nodes)
+    return {
+        variant = "nodes",
+        payload = {
+            nodes = nodes,
+        },
+    }
+end
+
+
+---@param selection Selection
+---@return TSNode[]
+local function assume_nodes_selection(selection)
+    assert(selection.variant == "nodes")
+    return selection.payload.nodes
+end
+
+
+---@param selection Selection
+local function realize_selection(selection)
+    if selection.variant == 'nodes' then
+	local nodes = selection.payload.nodes
+        local leftmost_node = nodes[1]
+        local rightmost_node = nodes[#nodes]
+        local start_row, start_col, _, _ = ts_utils.get_vim_range { leftmost_node:range() }
+        local _, _, end_row, end_col = ts_utils.get_vim_range { rightmost_node:range() }
+        vim.api.nvim_win_set_cursor(0, { start_row, start_col - 1 })
+        vim.cmd "normal! o"
+        vim.api.nvim_win_set_cursor(0, { end_row, end_col - 1 })
+    elseif selection.variant == 'subnode' then
+        local payload = selection.payload
+        vim.api.nvim_win_set_cursor(0, { payload.start_row, payload.start_col - 1 })
+        vim.cmd "normal! o"
+        vim.api.nvim_win_set_cursor(0, { payload.end_row, payload.end_col - 1 })
+    else
+        assert(false, selection)
+    end
+end
+
+
+---@type Selection[]
 local buffer_selection_stack = {}
 
 
@@ -41,7 +104,7 @@ M.init_selection = function()
         vim.api.nvim_err_writeln("No node at cursor!")
         return
     end
-    buffer_selection_stack[buf] = {{node}}
+    buffer_selection_stack[buf] = {make_nodes_selection({node})}
     ts_utils.update_selection(buf, node)
 end
 
@@ -195,15 +258,6 @@ local function climb_tree(current, parent, get_node_text, get_query_captures)
 end
 
 
-local function select_nodes(leftmost_node, rightmost_node)
-    local start_row, start_col, _, _ = ts_utils.get_vim_range { leftmost_node:range() }
-    local _, _, end_row, end_col = ts_utils.get_vim_range { rightmost_node:range() }
-    vim.api.nvim_win_set_cursor(0, { start_row, start_col - 1 })
-    vim.cmd "normal! o"
-    vim.api.nvim_win_set_cursor(0, { end_row, end_col - 1 })
-end
-
-
 ---@param left table<TSNode>
 ---@param right table<TSNode>
 ---@return boolean
@@ -238,7 +292,7 @@ end
 M.select_incremental = function()
     local buf = vim.api.nvim_get_current_buf()
     local history = buffer_selection_stack[buf]
-    local current = history[#history]
+    local current = assume_nodes_selection(history[#history])
 
     local get_node_text = function (node)
 	return ts.get_node_text(node, 0)
@@ -291,8 +345,9 @@ M.select_incremental = function()
             end
 
             if not same_selection then
-                select_nodes(next[1], next[#next])
-                table.insert(history, next)
+                local selection = make_nodes_selection(next)
+                realize_selection(selection)
+                table.insert(history, selection)
                 return
             end
         end
@@ -309,8 +364,8 @@ M.select_previous = function()
     local history = buffer_selection_stack[buf]
     if #history > 1 then
 	table.remove(history, #history)
-	local nodes = history[#history]
-	select_nodes(nodes[1], nodes[#nodes])
+	local selection = history[#history]
+        realize_selection(selection)
     end
 end
 
