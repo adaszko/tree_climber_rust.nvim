@@ -16,7 +16,7 @@ local parsers = require("nvim-treesitter.parsers")
 
 
 ---@type TSNode[][]
-local buffer_selection_history = {}
+local buffer_selection_stack = {}
 
 
 ---@generic T, U
@@ -35,7 +35,11 @@ end
 M.init_selection = function()
     local buf = vim.api.nvim_get_current_buf()
     local node = ts_utils.get_node_at_cursor()
-    buffer_selection_history[buf] = {{node}}
+    if node == nil then
+        vim.api.nvim_err_writeln("No node at cursor!")
+        return
+    end
+    buffer_selection_stack[buf] = {{node}}
     ts_utils.update_selection(buf, node)
 end
 
@@ -72,6 +76,38 @@ local function get_shared_parent(nodes)
 end
 
 
+---@param node TSNode
+---@return table<TSNode>
+local function get_inner_children(node)
+    local result = {}
+    if node:child_count() < 3 then
+        return result
+    end
+    for i=1,node:child_count()-2 do
+        table.insert(result, node:child(i))
+    end
+    return result
+end
+
+
+---@param node TSNode
+---@param parent TSNode
+---@return boolean
+local function is_leftmost_inner_child(node, parent)
+    assert(node ~= nil)
+    return node:equal(parent:child(1))
+end
+
+
+---@param node TSNode
+---@param parent TSNode
+---@return boolean
+local function is_rightmost_inner_child(node, parent)
+    assert(node ~= nil)
+    return node:equal(parent:child(parent:child_count()-2))
+end
+
+
 ---Computes a table of nodes to select next.  If not possible, returns unchanged input table.
 ---@param current table<TSNode>
 ---@param parent TSNode
@@ -90,7 +126,7 @@ local function climb_tree(current, parent, get_node_text, get_query_captures)
         return get_node_text(prev_sibling)
     end
 
-    local next_sibling_text = function (node, text)
+    local next_sibling_text = function (node)
         local next_sibling = node:next_sibling()
         if not next_sibling then
             return nil
@@ -100,94 +136,26 @@ local function climb_tree(current, parent, get_node_text, get_query_captures)
 
     local parent_type = parent:type()
     --dump(string.format("parent_type: %s", parent_type))
-    if parent_type == 'tuple_expression' then
-	assert(parent:child_count() ~= 3, "Single element tuple_expression should not exist")
-
-        if #current == 1 then
-            -- There's just one element selected => select it and its preceding/trailing comma
-            local node = current[1]
-            if next_sibling_text(node) == ")" then
-                -- Last element => select it and it's optional preceding comma
-                if prev_sibling_text(node) == "," then
-                    return {node:prev_sibling(), node}
-                else
-                    return {node}
-                end
-            elseif prev_sibling_text(node) == "(" then
-                -- First element => select it and it's optional trailing comma
-                if next_sibling_text(node) == "," then
-                    return {node, node:next_sibling()}
-                else
-                    return {node}
-                end
-            else
-                -- Middle element => select it and it's optional trailing comma
-                if next_sibling_text(node) == "," then
-                    return {node, node:next_sibling()}
-                else
-                    return {node}
-                end
-            end
-        elseif prev_sibling_text(current[1]) == "(" and next_sibling_text(current[#current]) == ")" then
-            -- There's more stuff selected => select entire tuple_expression
-            return {parent}
-        else
-            -- There's multiple tuple element children selected => select inner text of the parens
-            local inner_children = get_query_captures([[(tuple_expression _ @child (#not-eq? @child "(") (#not-eq? @child ")"))]], parent)
-            return inner_children
-        end
-    elseif parent_type == 'tuple_type' then
-	assert(parent:child_count() ~= 3, "Single element tuple_type should not exist")
-
-        if #current == 1 then
-            -- There's just one element selected => select it and its preceding/trailing comma
-            local node = current[1]
-            if next_sibling_text(node) == ")" then
-                -- Last element => select it and it's optional preceding comma
-                if prev_sibling_text(node) == "," then
-                    return {node:prev_sibling(), node}
-                else
-                    return {node}
-                end
-            elseif prev_sibling_text(node) == "(" then
-                -- First element => select it and it's optional trailing comma
-                if next_sibling_text(node) == "," then
-                    return {node, node:next_sibling()}
-                else
-                    return {node}
-                end
-            else
-                -- Middle element => select it and it's optional trailing comma
-                if next_sibling_text(node) == "," then
-                    return {node, node:next_sibling()}
-                else
-                    return {node}
-                end
-            end
-        elseif prev_sibling_text(current[1]) == "(" and next_sibling_text(current[#current]) == ")" then
-            -- There's more stuff selected => select entire tuple_type
-            return {parent}
-        else
-            -- There's multiple tuple element children selected => select inner text of the parens
-            local inner_children = get_query_captures([[(tuple_type _ @child (#not-eq? @child "(") (#not-eq? @child ")"))]], parent)
-            return inner_children
-        end
-    elseif parent_type == 'arguments' then
-	if parent:child_count() == 3 then
+    if parent_type == 'tuple_expression' or parent_type == 'tuple_type' or parent_type == 'arguments' or parent_type == 'type_arguments' or parent_type == 'array_expression' or parent_type == 'parameters' then
+	if parent:child_count() == 3 and (parent_type == 'arguments' or parent_type == 'type_arguments' or parent_type == 'array_expression' or parent_type == 'parameters') then
 	    return {parent}
+        end
+
+        if parent_type == 'tuple_expression' or parent_type == 'tuple_type' then
+            assert(parent:child_count() > 3, string.format("%d-element %s should not exist", parent:child_count(), parent_type))
 	end
 
         if #current == 1 then
             -- There's just one element selected => select it and its preceding/trailing comma
             local node = current[1]
-            if next_sibling_text(node) == ")" then
+            if is_rightmost_inner_child(node, parent) then
                 -- Last element => select it and it's optional preceding comma
                 if prev_sibling_text(node) == "," then
                     return {node:prev_sibling(), node}
                 else
                     return {node}
                 end
-            elseif prev_sibling_text(node) == "(" then
+            elseif is_leftmost_inner_child(node, parent) then
                 -- First element => select it and it's optional trailing comma
                 if next_sibling_text(node) == "," then
                     return {node, node:next_sibling()}
@@ -202,132 +170,20 @@ local function climb_tree(current, parent, get_node_text, get_query_captures)
                     return {node}
                 end
             end
-        elseif prev_sibling_text(current[1]) == "(" and next_sibling_text(current[#current]) == ")" then
+        elseif is_leftmost_inner_child(current[1], parent) and is_rightmost_inner_child(current[#current], parent) then
             -- There's more stuff selected => select entire arguments
             return {parent}
         else
             -- There's multiple element children selected => select inner text of the parens
-            local inner_children = get_query_captures([[(arguments _ @child (#not-eq? @child "(") (#not-eq? @child ")"))]], parent)
-            return inner_children
+            return get_inner_children(parent)
         end
-    elseif parent_type == 'type_arguments' then
-        if #current == 1 then
-            -- There's just one element selected => select it and its preceding/trailing comma
-            local node = current[1]
-            if next_sibling_text(node) == ">" then
-                -- Last element => select it and it's optional preceding comma
-                if prev_sibling_text(node) == "," then
-                    return {node:prev_sibling(), node}
-                else
-                    return {node}
-                end
-            elseif prev_sibling_text(node) == "<" then
-                -- First element => select it and it's optional trailing comma
-                if next_sibling_text(node) == "," then
-                    return {node, node:next_sibling()}
-                else
-                    return {node}
-                end
-            else
-                -- Middle element => select it and it's optional trailing comma
-                if next_sibling_text(node) == "," then
-                    return {node, node:next_sibling()}
-                else
-                    return {node}
-                end
-            end
-        elseif prev_sibling_text(current[1]) == "<" and next_sibling_text(current[#current]) == ">" then
-            -- There's more stuff selected => select entire arguments
-            return {parent}
-        else
-            -- There's multiple element children selected => select inner text of the parens
-            local inner_children = get_query_captures([[(type_arguments _ @child (#not-eq? @child "<") (#not-eq? @child ">"))]], parent)
-            return inner_children
-        end
-    elseif parent_type == 'array_expression' then
-	if parent:child_count() == 3 then
-	    return {parent}
-	end
-
-	if #current == 1 then
-            -- There's just one element selected => select it and its preceding/trailing comma
-            local node = current[1]
-            if next_sibling_text(node) == "]" then
-                -- Last element => select it and it's optional preceding comma
-                if prev_sibling_text(node) == "," then
-                    return {node:prev_sibling(), node}
-                else
-                    return {node}
-                end
-            elseif prev_sibling_text(node) == "[" then
-                -- First element => select it and it's optional trailing comma
-                if next_sibling_text(node) == "," then
-                    return {node, node:next_sibling()}
-                else
-                    return {node}
-                end
-            else
-                -- Middle element => select it and it's optional trailing comma
-                if next_sibling_text(node) == "," then
-                    return {node, node:next_sibling()}
-                else
-                    return {node}
-                end
-            end
-        elseif prev_sibling_text(current[1]) == "[" and next_sibling_text(current[#current]) == "]" then
-            -- There's more stuff selected => select entire arguments
-            return {parent}
-        else
-            -- There's multiple element children selected => select inner text of the parens
-            local inner_children = get_query_captures([[(array_expression _ @child (#not-eq? @child "[") (#not-eq? @child "]"))]], parent)
-            return inner_children
-        end
-    elseif parent_type == 'block' then
-        if prev_sibling_text(current[1]) == "{" and next_sibling_text(current[#current]) == "}" then
+    elseif parent_type == 'block' or parent_type == 'match_block' then
+        if is_leftmost_inner_child(current[1], parent) and is_rightmost_inner_child(current[#current], parent) then
             -- All children of a block are selected => select the block along with brackets
             return {parent}
         else
             -- Some children of a block are selected => select all the block's children
-            local inner_children = get_query_captures([[(block _ @child (#not-eq? @child "{") (#not-eq? @child "}"))]], parent)
-            return inner_children
-        end
-    elseif parent_type == 'parameters' then
-	if parent:child_count() == 3 then
-	    return {parent}
-	end
-
-        if #current == 1 then
-            -- There's just one element selected => select it and its preceding/trailing comma
-            local node = current[1]
-            if next_sibling_text(node) == ")" then
-                -- Last element => select it and it's optional preceding comma
-                if prev_sibling_text(node) == "," then
-                    return {node:prev_sibling(), node}
-                else
-                    return {node}
-                end
-            elseif prev_sibling_text(node) == "(" then
-                -- First element => select it and it's optional trailing comma
-                if next_sibling_text(node) == "," then
-                    return {node, node:next_sibling()}
-                else
-                    return {node}
-                end
-            else
-                -- Middle element => select it and it's optional trailing comma
-                if next_sibling_text(node) == "," then
-                    return {node, node:next_sibling()}
-                else
-                    return {node}
-                end
-            end
-        elseif prev_sibling_text(current[1]) == "(" and next_sibling_text(current[#current]) == ")" then
-            -- There's more stuff selected => select entire arguments
-            return {parent}
-        else
-            -- There's multiple element children selected => select inner text of the parens
-            local inner_children = get_query_captures([[(parameters _ @child (#not-eq? @child "(") (#not-eq? @child ")"))]], parent)
-            return inner_children
+            return get_inner_children(parent)
         end
     else
 	return {parent}
@@ -377,7 +233,7 @@ end
 -- https://github.com/nvim-treesitter/nvim-treesitter/blob/05962ae14a076c5806592b1d447adb0f9707c2c1/lua/nvim-treesitter/incremental_selection.lua#L57
 M.select_incremental = function()
     local buf = vim.api.nvim_get_current_buf()
-    local history = buffer_selection_history[buf]
+    local history = buffer_selection_stack[buf]
     local current = history[#history]
 
     local get_node_text = function (node)
@@ -398,8 +254,9 @@ M.select_incremental = function()
 	return result
     end
 
-    local node = current[#current]
+    local node = current[1]
     while true do
+        node = current[1]
         local parent = node:parent()
         if not parent then
             parent = buffer_root_node:descendant_for_range(node:range())
@@ -410,13 +267,18 @@ M.select_incremental = function()
         end
 
         assert(not parent:equal(node))
+        --dump('current:', map(current, function (n) return n:type() end))
         local next = climb_tree(current, parent, get_node_text, get_query_captures)
+        --dump('next:', map(next, function (n) return n:type() end))
         assert(#next >= 1)
 
         if not node_tables_equal(next, current) then
             local next_start_row, next_start_col, next_end_row, next_end_col = get_selection(next[1], next[#next])
             local current_start_row, current_start_col, current_end_row, current_end_col = get_selection(current[1], current[#current])
             local same_selection = (next_start_row == current_start_row and next_start_col == current_start_col and next_end_row == current_end_row and next_end_col == current_end_col)
+
+            --dump("same_selection", same_selection)
+
             if not same_selection then
                 select_nodes(next[1], next[#next])
                 table.insert(history, next)
@@ -424,14 +286,14 @@ M.select_incremental = function()
             end
         end
 
-        node = parent
+        current = next
     end
 end
 
 
 M.select_previous = function()
     local buf = vim.api.nvim_get_current_buf()
-    local history = buffer_selection_history[buf]
+    local history = buffer_selection_stack[buf]
     if #history > 1 then
 	table.remove(history, #history)
 	local nodes = history[#history]
