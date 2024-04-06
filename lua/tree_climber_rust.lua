@@ -20,15 +20,18 @@ local DEBUG = false
 ---@alias Selection table<string, any>
 
 
+---@param node TSNode
 ---@param start_row number
 ---@param start_col number
 ---@param end_row number
 ---@param end_col number
 ---@return Selection
-local function make_subnode_selection(start_row, start_col, end_row, end_col)
+local function make_subnode_selection(node, start_row, start_col, end_row, end_col)
+    local start_row, start_col, end_row, end_col = ts_utils.get_vim_range { start_row, start_col, end_row, end_col }
     return {
         variant = "subnode",
         payload = {
+            node = node,
             start_row = start_row,
             start_col = start_col,
             end_row = end_row,
@@ -51,15 +54,29 @@ end
 
 
 ---@param selection Selection
----@return TSNode[]
-local function assume_nodes_selection(selection)
-    assert(selection.variant == "nodes")
-    return selection.payload.nodes
+local function unwrap_nodes_selection(selection)
+    assert(selection.variant == "nodes", selection.variant)
+    return selection.payload
 end
 
 
 ---@param selection Selection
-local function realize_selection(selection)
+local function unwrap_subnode_selection(selection)
+    assert(selection.variant == "subnode", selection.variant)
+    return selection.payload
+end
+
+
+---@param selection Selection
+---@return boolean
+local function is_subnode_selection(selection)
+    return selection.variant == "subnode"
+end
+
+
+---@param selection Selection
+local function update_visual_mode_selection(selection)
+    assert(vim.api.nvim_get_mode().mode == "v")
     if selection.variant == 'nodes' then
 	local nodes = selection.payload.nodes
         local leftmost_node = nodes[1]
@@ -97,6 +114,12 @@ local function map(tbl, f)
 end
 
 
+local function enter_visual_mode()
+    local selection_mode = vim.api.nvim_replace_termcodes("v", true, true, true)
+    vim.api.nvim_cmd({ cmd = "normal", bang = true, args = { selection_mode } }, {})
+end
+
+
 M.init_selection = function()
     local buf = vim.api.nvim_get_current_buf()
     local node = ts_utils.get_node_at_cursor()
@@ -104,8 +127,43 @@ M.init_selection = function()
         vim.api.nvim_err_writeln("No node at cursor!")
         return
     end
-    buffer_selection_stack[buf] = {make_nodes_selection({node})}
-    ts_utils.update_selection(buf, node)
+
+    local node_text = ts.get_node_text(node, 0)
+
+    local perform_selection = function (selection)
+        enter_visual_mode()
+        update_visual_mode_selection(selection)
+        buffer_selection_stack[buf] = {selection}
+    end
+
+    local node_selection = function ()
+        local selection = make_nodes_selection({node})
+        perform_selection(selection)
+    end
+
+    local selection = nil
+    if node:type() == "string_literal" and node_text ~= '""' then
+        local start_row, start_col, _, _ = node:child(0):range()
+        local _, _, end_row, end_col = node:child(node:child_count()-1):range()
+        selection = make_subnode_selection(node, start_row, start_col+1, end_row, end_col-1)
+        perform_selection(selection)
+    elseif node:type() == "char_literal" then
+        local start_row, start_col, end_row, end_col = node:range()
+        selection = make_subnode_selection(node, start_row, start_col+1, end_row, end_col-1)
+        perform_selection(selection)
+    elseif node:type() == "raw_string_literal" then
+        local prefix_len = node_text:match('r#+"'):len()
+        local suffix_len = prefix_len - 1
+        local infix = node_text:sub(prefix_len+1, node_text:len() - suffix_len)
+        if infix:len() == 0 then
+            return node_selection()
+        end
+        local start_row, start_col, end_row, end_col = node:range()
+        selection = make_subnode_selection(node, start_row, start_col+prefix_len, end_row, end_col-suffix_len)
+        perform_selection(selection)
+    else
+        node_selection()
+    end
 end
 
 
@@ -292,7 +350,16 @@ end
 M.select_incremental = function()
     local buf = vim.api.nvim_get_current_buf()
     local history = buffer_selection_stack[buf]
-    local current = assume_nodes_selection(history[#history])
+
+    if is_subnode_selection(history[#history]) then
+        local node = unwrap_subnode_selection(history[#history]).node
+        local selection = make_nodes_selection({node})
+        update_visual_mode_selection(selection)
+        table.insert(history, selection)
+        return
+    end
+
+    local current = unwrap_nodes_selection(history[#history]).nodes
 
     local get_node_text = function (node)
 	return ts.get_node_text(node, 0)
@@ -346,7 +413,7 @@ M.select_incremental = function()
 
             if not same_selection then
                 local selection = make_nodes_selection(next)
-                realize_selection(selection)
+                update_visual_mode_selection(selection)
                 table.insert(history, selection)
                 return
             end
@@ -365,7 +432,7 @@ M.select_previous = function()
     if #history > 1 then
 	table.remove(history, #history)
 	local selection = history[#history]
-        realize_selection(selection)
+        update_visual_mode_selection(selection)
     end
 end
 
