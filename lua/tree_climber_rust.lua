@@ -136,7 +136,7 @@ local function climb_tree(current, parent, get_node_text, get_query_captures)
 
     local parent_type = parent:type()
     --dump(string.format("parent_type: %s", parent_type))
-    if parent_type == 'tuple_expression' or parent_type == 'tuple_type' or parent_type == 'arguments' or parent_type == 'type_arguments' or parent_type == 'array_expression' or parent_type == 'parameters' then
+    if parent_type == 'tuple_expression' or parent_type == 'tuple_type' or parent_type == 'tuple_pattern' or parent_type == 'arguments' or parent_type == 'type_arguments' or parent_type == 'array_expression' or parent_type == 'parameters' or parent_type == 'field_initializer_list' or parent_type == 'field_declaration_list' then
 	if parent:child_count() == 3 and (parent_type == 'arguments' or parent_type == 'type_arguments' or parent_type == 'array_expression' or parent_type == 'parameters') then
 	    return {parent}
         end
@@ -254,8 +254,9 @@ M.select_incremental = function()
 	return result
     end
 
+    local remaining_iterations = 1000
     local node = current[1]
-    while true do
+    while remaining_iterations > 0 do
         node = current[1]
         local parent = node:parent()
         if not parent then
@@ -287,7 +288,9 @@ M.select_incremental = function()
         end
 
         current = next
+        remaining_iterations = remaining_iterations - 1
     end
+    error("Iterations limit reached.  Please report this as a bug along with the source file")
 end
 
 
