@@ -6,7 +6,6 @@
  * https://luals.github.io/wiki/annotations/
 
  * TODO
-    * Remove unused get_query_captures argument to climb_tree
     * Adjust currently selected nodes table with the possibly extended visual selection by user
 
 --]]
@@ -235,9 +234,8 @@ end
 ---@param current table<TSNode>
 ---@param parent TSNode
 ---@param get_node_text fun(n: TSNode): string
----@param get_query_captures fun(q: string, n: TSNode): table<TSNode>
 ---@return table<TSNode>
-local function climb_tree(current, parent, get_node_text, get_query_captures)
+local function climb_tree(current, parent, get_node_text)
     -- Preconditions
     assert(#current > 0)
 
@@ -367,17 +365,6 @@ M.select_incremental = function()
 
     local buffer_root_node = parsers.get_parser(buf):parse()[1]:root()
     assert(buffer_root_node:parent() == nil)
-    local get_query_captures = function (query_string, root)
-	local result = {}
-	local query = ts.query.parse("rust", query_string)
-        if root == nil then
-            root = buffer_root_node
-        end
-	for _, node, _ in query:iter_captures(root, 0) do
-	    table.insert(result, node)
-	end
-	return result
-    end
 
     local remaining_iterations = 1000
     local node = current[1]
@@ -396,7 +383,7 @@ M.select_incremental = function()
         if DEBUG then
             dump('current:', map(current, function (n) return n:type() end))
         end
-        local next = climb_tree(current, parent, get_node_text, get_query_captures)
+        local next = climb_tree(current, parent, get_node_text)
         if DEBUG then
             dump('next:', map(next, function (n) return n:type() end))
         end
@@ -460,24 +447,14 @@ local function make_test(input)
 	return ts.get_node_text(node, input)
     end
 
-    local get_query_captures = function (query_string, root)
-	local result = {}
-	local query = ts.query.parse("rust", query_string)
-	for _, node, _ in query:iter_captures(root, input) do
-	    table.insert(result, node)
-	end
-	return result
-    end
-
-    return root_node, get_node_text, get_query_captures
+    return root_node, get_node_text
 end
 
 
 -- tuple_expression {{{
 ---@param tuple_expression TSNode
 ---@param get_node_text function
----@param get_query_captures function
-local function test_tuple_expression_middle_element(tuple_expression, get_node_text, get_query_captures)
+local function test_tuple_expression_middle_element(tuple_expression, get_node_text)
     local integer_literal_321 = tuple_expression:child(3)
     assert(integer_literal_321:type() == "integer_literal")
     assert(get_node_text(integer_literal_321) == "321")
@@ -489,7 +466,7 @@ local function test_tuple_expression_middle_element(tuple_expression, get_node_t
     do
         local current = {integer_literal_321}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {integer_literal_321, trailing_comma}))
     end
 
@@ -498,7 +475,7 @@ local function test_tuple_expression_middle_element(tuple_expression, get_node_t
     do
         local current = {integer_literal_321, trailing_comma}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, inner_children))
     end
 
@@ -506,13 +483,13 @@ local function test_tuple_expression_middle_element(tuple_expression, get_node_t
     do
         local current = inner_children
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {tuple_expression}))
     end
 end
 
 
-local function test_tuple_expression_last_element(tuple_expression, get_node_text, get_query_captures)
+local function test_tuple_expression_last_element(tuple_expression, get_node_text)
     local integer_literal_444 = tuple_expression:child(5)
     assert(integer_literal_444:type() == "integer_literal")
     assert(get_node_text(integer_literal_444) == "444")
@@ -524,7 +501,7 @@ local function test_tuple_expression_last_element(tuple_expression, get_node_tex
     do
         local current = {integer_literal_444}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {preceding_comma, integer_literal_444}))
     end
 
@@ -533,7 +510,7 @@ local function test_tuple_expression_last_element(tuple_expression, get_node_tex
     do
         local current = {preceding_comma, integer_literal_444}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, inner_children))
     end
 
@@ -541,13 +518,13 @@ local function test_tuple_expression_last_element(tuple_expression, get_node_tex
     do
         local current = inner_children
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {tuple_expression}))
     end
 end
 
 
-local function test_tuple_expression_first_element(tuple_expression, get_node_text, get_query_captures)
+local function test_tuple_expression_first_element(tuple_expression, get_node_text)
     local integer_literal_123 = tuple_expression:child(1)
     assert(integer_literal_123:type() == "integer_literal")
     assert(get_node_text(integer_literal_123) == "123")
@@ -559,7 +536,7 @@ local function test_tuple_expression_first_element(tuple_expression, get_node_te
     do
         local current = {integer_literal_123}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {integer_literal_123, trailing_comma}))
     end
 
@@ -568,7 +545,7 @@ local function test_tuple_expression_first_element(tuple_expression, get_node_te
     do
         local current = {integer_literal_123, trailing_comma}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, inner_children))
     end
 
@@ -576,13 +553,13 @@ local function test_tuple_expression_first_element(tuple_expression, get_node_te
     do
         local current = inner_children
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {tuple_expression}))
     end
 end
 
 local function test_tuple_expression()
-    local expression_statement, get_node_text, get_query_captures = make_test([[(123, 321, 444)]])
+    local expression_statement, get_node_text = make_test([[(123, 321, 444)]])
 
     --[[
 (expression_statement) ; [1:1 - 15]
@@ -601,9 +578,9 @@ local function test_tuple_expression()
     local tuple_expression = expression_statement:child(0)
     assert(tuple_expression:type() == "tuple_expression")
 
-    test_tuple_expression_middle_element(tuple_expression, get_node_text, get_query_captures)
-    test_tuple_expression_last_element(tuple_expression, get_node_text, get_query_captures)
-    test_tuple_expression_first_element(tuple_expression, get_node_text, get_query_captures)
+    test_tuple_expression_middle_element(tuple_expression, get_node_text)
+    test_tuple_expression_last_element(tuple_expression, get_node_text)
+    test_tuple_expression_first_element(tuple_expression, get_node_text)
 end
 -- }}}
 
@@ -611,8 +588,7 @@ end
 -- tuple_type {{{
 ---@param tuple_type TSNode
 ---@param get_node_text function
----@param get_query_captures function
-local function test_tuple_type_middle_element(tuple_type, get_node_text, get_query_captures)
+local function test_tuple_type_middle_element(tuple_type, get_node_text)
     local primitive_type_u16 = tuple_type:child(3)
     assert(primitive_type_u16:type() == "primitive_type")
     assert(get_node_text(primitive_type_u16) == "u16")
@@ -624,7 +600,7 @@ local function test_tuple_type_middle_element(tuple_type, get_node_text, get_que
     do
         local current = {primitive_type_u16}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {primitive_type_u16, trailing_comma}))
     end
 
@@ -633,7 +609,7 @@ local function test_tuple_type_middle_element(tuple_type, get_node_text, get_que
     do
         local current = {primitive_type_u16, trailing_comma}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, inner_children))
     end
 
@@ -641,13 +617,13 @@ local function test_tuple_type_middle_element(tuple_type, get_node_text, get_que
     do
         local current = inner_children
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {tuple_type}))
     end
 end
 
 
-local function test_tuple_type_last_element(tuple_type, get_node_text, get_query_captures)
+local function test_tuple_type_last_element(tuple_type, get_node_text)
     local primitive_type_u32 = tuple_type:child(5)
     assert(primitive_type_u32:type() == "primitive_type")
     assert(get_node_text(primitive_type_u32) == "u32")
@@ -659,7 +635,7 @@ local function test_tuple_type_last_element(tuple_type, get_node_text, get_query
     do
         local current = {primitive_type_u32}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {preceding_comma, primitive_type_u32}))
     end
 
@@ -668,7 +644,7 @@ local function test_tuple_type_last_element(tuple_type, get_node_text, get_query
     do
         local current = {preceding_comma, primitive_type_u32}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, inner_children))
     end
 
@@ -676,13 +652,13 @@ local function test_tuple_type_last_element(tuple_type, get_node_text, get_query
     do
         local current = inner_children
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {tuple_type}))
     end
 end
 
 
-local function test_tuple_type_first_element(tuple_type, get_node_text, get_query_captures)
+local function test_tuple_type_first_element(tuple_type, get_node_text)
     local primitive_type_u8 = tuple_type:child(1)
     assert(primitive_type_u8:type() == "primitive_type")
     assert(get_node_text(primitive_type_u8) == "u8")
@@ -694,7 +670,7 @@ local function test_tuple_type_first_element(tuple_type, get_node_text, get_quer
     do
         local current = {primitive_type_u8}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {primitive_type_u8, trailing_comma}))
     end
 
@@ -703,7 +679,7 @@ local function test_tuple_type_first_element(tuple_type, get_node_text, get_quer
     do
         local current = {primitive_type_u8, trailing_comma}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, inner_children))
     end
 
@@ -711,13 +687,13 @@ local function test_tuple_type_first_element(tuple_type, get_node_text, get_quer
     do
         local current = inner_children
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {tuple_type}))
     end
 end
 
 local function test_tuple_type()
-    local function_item, get_node_text, get_query_captures = make_test([[fn f() -> (u8, u16, u32) {}]])
+    local function_item, get_node_text = make_test([[fn f() -> (u8, u16, u32) {}]])
 
     --[[
 (function_item) ; [1:1 - 27]
@@ -744,15 +720,15 @@ local function test_tuple_type()
     local tuple_type = function_item:child(4)
     assert(tuple_type:type() == "tuple_type")
 
-    test_tuple_type_middle_element(tuple_type, get_node_text, get_query_captures)
-    test_tuple_type_last_element(tuple_type, get_node_text, get_query_captures)
-    test_tuple_type_first_element(tuple_type, get_node_text, get_query_captures)
+    test_tuple_type_middle_element(tuple_type, get_node_text)
+    test_tuple_type_last_element(tuple_type, get_node_text)
+    test_tuple_type_first_element(tuple_type, get_node_text)
 end
 -- }}}
 
 
 -- call_expression {{{
-local function test_call_expression_middle_argument(call_expression, get_node_text, get_query_captures)
+local function test_call_expression_middle_argument(call_expression, get_node_text)
     local arguments = call_expression:child(1)
     assert(arguments:type() == "arguments")
 
@@ -767,7 +743,7 @@ local function test_call_expression_middle_argument(call_expression, get_node_te
     do
         local current = {integer_literal_321}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {integer_literal_321, trailing_comma}))
     end
 
@@ -776,7 +752,7 @@ local function test_call_expression_middle_argument(call_expression, get_node_te
     do
         local current = {integer_literal_321, trailing_comma}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, inner_children))
     end
 
@@ -784,12 +760,12 @@ local function test_call_expression_middle_argument(call_expression, get_node_te
     do
         local current = inner_children
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {arguments}))
     end
 end
 
-local function test_call_expression_last_argument(call_expression, get_node_text, get_query_captures)
+local function test_call_expression_last_argument(call_expression, get_node_text)
     local arguments = call_expression:child(1)
     assert(arguments:type() == "arguments")
 
@@ -804,7 +780,7 @@ local function test_call_expression_last_argument(call_expression, get_node_text
     do
         local current = {integer_literal_444}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {preceding_comma, integer_literal_444}))
     end
 
@@ -813,7 +789,7 @@ local function test_call_expression_last_argument(call_expression, get_node_text
     do
         local current = {preceding_comma, integer_literal_444}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, inner_children))
     end
 
@@ -821,7 +797,7 @@ local function test_call_expression_last_argument(call_expression, get_node_text
     do
         local current = inner_children
         local parent = get_shared_parent(current)
-        local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+        local actual = climb_tree(current, parent, get_node_text)
         assert(node_tables_equal(actual, {arguments}))
     end
 
@@ -829,12 +805,12 @@ local function test_call_expression_last_argument(call_expression, get_node_text
     do
         local current = {arguments}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {call_expression}))
     end
 end
 
-local function test_call_expression_first_argument(call_expression, get_node_text, get_query_captures)
+local function test_call_expression_first_argument(call_expression, get_node_text)
     local arguments = call_expression:child(1)
     assert(arguments:type() == "arguments")
 
@@ -849,7 +825,7 @@ local function test_call_expression_first_argument(call_expression, get_node_tex
     do
         local current = {integer_literal_123}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {integer_literal_123, trailing_comma}))
     end
 
@@ -858,7 +834,7 @@ local function test_call_expression_first_argument(call_expression, get_node_tex
     do
         local current = {integer_literal_123, trailing_comma}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, inner_children))
     end
 
@@ -866,12 +842,12 @@ local function test_call_expression_first_argument(call_expression, get_node_tex
     do
         local current = inner_children
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {arguments}))
     end
 end
 
-local function test_call_expression_function(call_expression, get_node_text, get_query_captures)
+local function test_call_expression_function(call_expression, get_node_text)
     local fn = call_expression:child(0)
     assert(fn:type() == "identifier")
     assert(get_node_text(fn) == "f")
@@ -883,7 +859,7 @@ local function test_call_expression_function(call_expression, get_node_text, get
     do
         local current = {fn}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {call_expression}))
     end
 end
@@ -891,7 +867,7 @@ end
 
 local function test_call_expression()
     do
-	local expression_statement, get_node_text, get_query_captures = make_test([[f(123, 321, 444)]])
+	local expression_statement, get_node_text = make_test([[f(123, 321, 444)]])
 
 --[[
 (expression_statement) ; [1:1 - 16]
@@ -912,14 +888,14 @@ local function test_call_expression()
 	local call_expression = expression_statement:child(0)
 	assert(call_expression:type() == "call_expression")
 
-	test_call_expression_middle_argument(call_expression, get_node_text, get_query_captures)
-	test_call_expression_last_argument(call_expression, get_node_text, get_query_captures)
-	test_call_expression_first_argument(call_expression, get_node_text, get_query_captures)
-	test_call_expression_function(call_expression, get_node_text, get_query_captures)
+	test_call_expression_middle_argument(call_expression, get_node_text)
+	test_call_expression_last_argument(call_expression, get_node_text)
+	test_call_expression_first_argument(call_expression, get_node_text)
+	test_call_expression_function(call_expression, get_node_text)
     end
 
     do
-	local expression_statement, get_node_text, get_query_captures = make_test([[f(123);]])
+	local expression_statement, get_node_text = make_test([[f(123);]])
 
 --[[
 (expression_statement) ; [1:1 - 7]
@@ -942,7 +918,7 @@ local function test_call_expression()
 	assert(get_node_text(integer_literal_123) == "123")
         local current = {integer_literal_123}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {arguments}))
     end
 end
@@ -950,7 +926,7 @@ end
 
 
 -- type_arguments {{{
-local function test_type_arguments_middle_element(type_arguments, get_node_text, get_query_captures)
+local function test_type_arguments_middle_element(type_arguments, get_node_text)
     local type_identifier_b = type_arguments:child(3)
     assert(type_identifier_b:type() == "type_identifier")
     assert(get_node_text(type_identifier_b) == "B")
@@ -962,7 +938,7 @@ local function test_type_arguments_middle_element(type_arguments, get_node_text,
     do
         local current = {type_identifier_b}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {type_identifier_b, trailing_comma}))
     end
 
@@ -971,7 +947,7 @@ local function test_type_arguments_middle_element(type_arguments, get_node_text,
     do
         local current = {type_identifier_b, trailing_comma}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, inner_children))
     end
 
@@ -979,12 +955,12 @@ local function test_type_arguments_middle_element(type_arguments, get_node_text,
     do
         local current = inner_children
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {type_arguments}))
     end
 end
 
-local function test_type_arguments_last_element(type_arguments, get_node_text, get_query_captures)
+local function test_type_arguments_last_element(type_arguments, get_node_text)
     local type_identifier_b = type_arguments:child(5) assert(type_identifier_b:type() == "type_identifier")
     assert(get_node_text(type_identifier_b) == "C")
 
@@ -995,7 +971,7 @@ local function test_type_arguments_last_element(type_arguments, get_node_text, g
     do
         local current = {type_identifier_b}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {preceding_comma, type_identifier_b}))
     end
 
@@ -1004,7 +980,7 @@ local function test_type_arguments_last_element(type_arguments, get_node_text, g
     do
         local current = {preceding_comma, type_identifier_b}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, inner_children))
     end
 
@@ -1012,12 +988,12 @@ local function test_type_arguments_last_element(type_arguments, get_node_text, g
     do
         local current = inner_children
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {type_arguments}))
     end
 end
 
-local function test_type_arguments_first_element(type_arguments, get_node_text, get_query_captures)
+local function test_type_arguments_first_element(type_arguments, get_node_text)
     local type_identifier_b = type_arguments:child(1)
     assert(type_identifier_b:type() == "type_identifier")
     assert(get_node_text(type_identifier_b) == "A")
@@ -1029,7 +1005,7 @@ local function test_type_arguments_first_element(type_arguments, get_node_text, 
     do
         local current = {type_identifier_b}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {type_identifier_b, trailing_comma}))
     end
 
@@ -1038,7 +1014,7 @@ local function test_type_arguments_first_element(type_arguments, get_node_text, 
     do
         local current = {type_identifier_b, trailing_comma}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, inner_children))
     end
 
@@ -1046,13 +1022,13 @@ local function test_type_arguments_first_element(type_arguments, get_node_text, 
     do
         local current = inner_children
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {type_arguments}))
     end
 end
 
 local function test_type_arguments()
-    local type_item, get_node_text, get_query_captures = make_test([[type t = HashMap<A, B, C>;]])
+    local type_item, get_node_text = make_test([[type t = HashMap<A, B, C>;]])
 
     --[[
 (type_item) ; [1:1 - 26]
@@ -1077,15 +1053,15 @@ local function test_type_arguments()
     local type_arguments = generic_type:child(1)
     assert(type_arguments:type() == "type_arguments")
 
-    test_type_arguments_middle_element(type_arguments, get_node_text, get_query_captures)
-    test_type_arguments_last_element(type_arguments, get_node_text, get_query_captures)
-    test_type_arguments_first_element(type_arguments, get_node_text, get_query_captures)
+    test_type_arguments_middle_element(type_arguments, get_node_text)
+    test_type_arguments_last_element(type_arguments, get_node_text)
+    test_type_arguments_first_element(type_arguments, get_node_text)
 end
 -- }}}
 
 
 -- array_expression {{{
-local function test_array_expression_middle_element(array_expression, get_node_text, get_query_captures)
+local function test_array_expression_middle_element(array_expression, get_node_text)
     local integer_literal_321 = array_expression:child(3)
     assert(integer_literal_321:type() == "integer_literal")
     assert(get_node_text(integer_literal_321) == "321")
@@ -1097,7 +1073,7 @@ local function test_array_expression_middle_element(array_expression, get_node_t
     do
         local current = {integer_literal_321}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {integer_literal_321, trailing_comma}))
     end
 
@@ -1106,7 +1082,7 @@ local function test_array_expression_middle_element(array_expression, get_node_t
     do
         local current = {integer_literal_321, trailing_comma}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, inner_children))
     end
 
@@ -1114,12 +1090,12 @@ local function test_array_expression_middle_element(array_expression, get_node_t
     do
         local current = inner_children
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {array_expression}))
     end
 end
 
-local function test_array_expression_last_element(array_expression, get_node_text, get_query_captures)
+local function test_array_expression_last_element(array_expression, get_node_text)
     local integer_literal_444 = array_expression:child(5)
     assert(integer_literal_444:type() == "integer_literal")
     assert(get_node_text(integer_literal_444) == "444")
@@ -1131,7 +1107,7 @@ local function test_array_expression_last_element(array_expression, get_node_tex
     do
         local current = {integer_literal_444}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {preceding_comma, integer_literal_444}))
     end
 
@@ -1140,7 +1116,7 @@ local function test_array_expression_last_element(array_expression, get_node_tex
     do
         local current = {preceding_comma, integer_literal_444}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, inner_children))
     end
 
@@ -1148,12 +1124,12 @@ local function test_array_expression_last_element(array_expression, get_node_tex
     do
         local current = inner_children
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {array_expression}))
     end
 end
 
-local function test_array_expression_first_element(array_expression, get_node_text, get_query_captures)
+local function test_array_expression_first_element(array_expression, get_node_text)
     local integer_literal_123 = array_expression:child(1)
     assert(integer_literal_123:type() == "integer_literal")
     assert(get_node_text(integer_literal_123) == "123")
@@ -1165,7 +1141,7 @@ local function test_array_expression_first_element(array_expression, get_node_te
     do
         local current = {integer_literal_123}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {integer_literal_123, trailing_comma}))
     end
 
@@ -1174,7 +1150,7 @@ local function test_array_expression_first_element(array_expression, get_node_te
     do
         local current = {integer_literal_123, trailing_comma}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, inner_children))
     end
 
@@ -1182,14 +1158,14 @@ local function test_array_expression_first_element(array_expression, get_node_te
     do
         local current = inner_children
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {array_expression}))
     end
 end
 
 local function test_array_expression()
     do
-	local expression_statement, get_node_text, get_query_captures = make_test("[123, 321, 444]")
+	local expression_statement, get_node_text = make_test("[123, 321, 444]")
 
 --[[
 (expression_statement) ; [1:1 - 15]
@@ -1208,13 +1184,13 @@ local function test_array_expression()
 	local array_expression = expression_statement:child(0)
 	assert(array_expression:type() == "array_expression")
 
-	test_array_expression_middle_element(array_expression, get_node_text, get_query_captures)
-	test_array_expression_last_element(array_expression, get_node_text, get_query_captures)
-	test_array_expression_first_element(array_expression, get_node_text, get_query_captures)
+	test_array_expression_middle_element(array_expression, get_node_text)
+	test_array_expression_last_element(array_expression, get_node_text)
+	test_array_expression_first_element(array_expression, get_node_text)
     end
 
     do
-	local expression_statement, get_node_text, get_query_captures = make_test([[[123];]])
+	local expression_statement, get_node_text = make_test([[[123];]])
 
 --[[
 (expression_statement) ; [1:1 - 6]
@@ -1233,7 +1209,7 @@ local function test_array_expression()
 	assert(get_node_text(integer_literal_123) == "123")
         local current = {integer_literal_123}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {array_expression}))
     end
 end
@@ -1242,7 +1218,7 @@ end
 
 -- block {{{
 local function test_block()
-    local expression_statement, get_node_text, get_query_captures = make_test([[{123; 321; 444}]])
+    local expression_statement, get_node_text = make_test([[{123; 321; 444}]])
 
     --[[
 (expression_statement) ; [1:1 - 15]
@@ -1270,16 +1246,16 @@ local function test_block()
         local inner_children = get_inner_children(block)
         local current = {expression_statement_321}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, inner_children))
     end
 
     -- 2) Select entire block with brackets
     do
-        local inner_children = get_query_captures([[(block _ @child (#not-eq? @child "{") (#not-eq? @child "}"))]], expression_statement)
+        local inner_children = get_inner_children(block)
         local current = inner_children
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {block}))
     end
 end
@@ -1287,7 +1263,7 @@ end
 
 
 -- function_item {{{
-local function test_function_item_middle_argument(function_item, get_node_text, get_query_captures)
+local function test_function_item_middle_argument(function_item, get_node_text)
     local parameters = function_item:child(2)
     assert(parameters:type() == "parameters")
 
@@ -1302,7 +1278,7 @@ local function test_function_item_middle_argument(function_item, get_node_text, 
     do
         local current = {parameter_b}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {parameter_b, trailing_comma}))
     end
 
@@ -1311,7 +1287,7 @@ local function test_function_item_middle_argument(function_item, get_node_text, 
     do
         local current = {parameter_b, trailing_comma}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, inner_children))
     end
 
@@ -1319,12 +1295,12 @@ local function test_function_item_middle_argument(function_item, get_node_text, 
     do
         local current = inner_children
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {parameters}))
     end
 end
 
-local function test_function_item_last_argument(function_item, get_node_text, get_query_captures)
+local function test_function_item_last_argument(function_item, get_node_text)
     local parameters = function_item:child(2)
     assert(parameters:type() == "parameters")
 
@@ -1339,7 +1315,7 @@ local function test_function_item_last_argument(function_item, get_node_text, ge
     do
         local current = {parameter_c}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {preceding_comma, parameter_c}))
     end
 
@@ -1348,7 +1324,7 @@ local function test_function_item_last_argument(function_item, get_node_text, ge
     do
         local current = {preceding_comma, parameter_c}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, inner_children))
     end
 
@@ -1356,7 +1332,7 @@ local function test_function_item_last_argument(function_item, get_node_text, ge
     do
         local current = inner_children
         local parent = get_shared_parent(current)
-        local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+        local actual = climb_tree(current, parent, get_node_text)
         assert(node_tables_equal(actual, {parameters}))
     end
 
@@ -1364,12 +1340,12 @@ local function test_function_item_last_argument(function_item, get_node_text, ge
     do
         local current = {parameters}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {function_item}))
     end
 end
 
-local function test_function_item_first_argument(function_item, get_node_text, get_query_captures)
+local function test_function_item_first_argument(function_item, get_node_text)
     local parameters = function_item:child(2)
     assert(parameters:type() == "parameters")
 
@@ -1384,7 +1360,7 @@ local function test_function_item_first_argument(function_item, get_node_text, g
     do
         local current = {parameter_a}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {parameter_a, trailing_comma}))
     end
 
@@ -1393,7 +1369,7 @@ local function test_function_item_first_argument(function_item, get_node_text, g
     do
         local current = {parameter_a, trailing_comma}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, inner_children))
     end
 
@@ -1401,7 +1377,7 @@ local function test_function_item_first_argument(function_item, get_node_text, g
     do
         local current = inner_children
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {parameters}))
     end
 end
@@ -1409,7 +1385,7 @@ end
 
 local function test_function_item()
     do
-	local function_item, get_node_text, get_query_captures = make_test([[fn f(a: u8, b: u16, c: u32) {}]])
+	local function_item, get_node_text = make_test([[fn f(a: u8, b: u16, c: u32) {}]])
 	assert(function_item:type() == "function_item")
 
     --[[
@@ -1438,13 +1414,13 @@ local function test_function_item()
   "}" ; [1:30 - 30]
     --]]
 
-	test_function_item_middle_argument(function_item, get_node_text, get_query_captures)
-	test_function_item_last_argument(function_item, get_node_text, get_query_captures)
-	test_function_item_first_argument(function_item, get_node_text, get_query_captures)
+	test_function_item_middle_argument(function_item, get_node_text)
+	test_function_item_last_argument(function_item, get_node_text)
+	test_function_item_first_argument(function_item, get_node_text)
     end
 
     do
-	local function_item, get_node_text, get_query_captures = make_test([[fn f(x: usize) {}]])
+	local function_item, get_node_text = make_test([[fn f(x: usize) {}]])
 	assert(function_item:type() == "function_item")
 
 --[[
@@ -1472,7 +1448,7 @@ local function test_function_item()
 
         local current = {parameter_x}
         local parent = get_shared_parent(current)
-	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
+	local actual = climb_tree(current, parent, get_node_text)
 	assert(node_tables_equal(actual, {parameters}))
     end
 end
