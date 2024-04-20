@@ -5,6 +5,10 @@
  * Remember about vim.inspect() for debugging
  * https://luals.github.io/wiki/annotations/
 
+ * TODO
+    * Remove unused get_query_captures argument to climb_tree
+    * Adjust currently selected nodes table with the possibly extended visual selection by user
+
 --]]
 
 local M = {}
@@ -202,14 +206,10 @@ end
 ---@param node TSNode
 ---@return table<TSNode>
 local function get_inner_children(node)
-    local result = {}
     if node:child_count() < 3 then
-        return result
+        return {}
     end
-    for i=1,node:child_count()-2 do
-        table.insert(result, node:child(i))
-    end
-    return result
+    return {node:child(1), node:child(node:child_count()-2)}
 end
 
 
@@ -494,7 +494,7 @@ local function test_tuple_expression_middle_element(tuple_expression, get_node_t
     end
 
     -- 2) Select inner block (just like normal mode command vib)
-    local inner_children = get_query_captures([[(tuple_expression _ @child (#not-eq? @child "(") (#not-eq? @child ")"))]], tuple_expression)
+    local inner_children = get_inner_children(tuple_expression)
     do
         local current = {integer_literal_321, trailing_comma}
         local parent = get_shared_parent(current)
@@ -529,7 +529,7 @@ local function test_tuple_expression_last_element(tuple_expression, get_node_tex
     end
 
     -- 2) Select inner block (just like normal mode command vib)
-    local inner_children = get_query_captures([[(tuple_expression _ @child (#not-eq? @child "(") (#not-eq? @child ")"))]], tuple_expression)
+    local inner_children = get_inner_children(tuple_expression)
     do
         local current = {preceding_comma, integer_literal_444}
         local parent = get_shared_parent(current)
@@ -564,7 +564,7 @@ local function test_tuple_expression_first_element(tuple_expression, get_node_te
     end
 
     -- 2) Select inner block (just like normal mode command vib)
-    local inner_children = get_query_captures([[(tuple_expression _ @child (#not-eq? @child "(") (#not-eq? @child ")"))]], tuple_expression)
+    local inner_children = get_inner_children(tuple_expression)
     do
         local current = {integer_literal_123, trailing_comma}
         local parent = get_shared_parent(current)
@@ -629,7 +629,7 @@ local function test_tuple_type_middle_element(tuple_type, get_node_text, get_que
     end
 
     -- 2) Select inner block (just like normal mode command vib)
-    local inner_children = get_query_captures([[(tuple_type _ @child (#not-eq? @child "(") (#not-eq? @child ")"))]], tuple_type)
+    local inner_children = get_inner_children(tuple_type)
     do
         local current = {primitive_type_u16, trailing_comma}
         local parent = get_shared_parent(current)
@@ -664,7 +664,7 @@ local function test_tuple_type_last_element(tuple_type, get_node_text, get_query
     end
 
     -- 2) Select inner block (just like normal mode command vib)
-    local inner_children = get_query_captures([[(tuple_type _ @child (#not-eq? @child "(") (#not-eq? @child ")"))]], tuple_type)
+    local inner_children = get_inner_children(tuple_type)
     do
         local current = {preceding_comma, primitive_type_u32}
         local parent = get_shared_parent(current)
@@ -699,7 +699,7 @@ local function test_tuple_type_first_element(tuple_type, get_node_text, get_quer
     end
 
     -- 2) Select inner block (just like normal mode command vib)
-    local inner_children = get_query_captures([[(tuple_type _ @child (#not-eq? @child "(") (#not-eq? @child ")"))]], tuple_type)
+    local inner_children = get_inner_children(tuple_type)
     do
         local current = {primitive_type_u8, trailing_comma}
         local parent = get_shared_parent(current)
@@ -772,7 +772,7 @@ local function test_call_expression_middle_argument(call_expression, get_node_te
     end
 
     -- 2) Select inner block (just like normal mode command vib)
-    local inner_children = get_query_captures([[(arguments _ @child (#not-eq? @child "(") (#not-eq? @child ")"))]], call_expression)
+    local inner_children = get_inner_children(arguments)
     do
         local current = {integer_literal_321, trailing_comma}
         local parent = get_shared_parent(current)
@@ -809,7 +809,7 @@ local function test_call_expression_last_argument(call_expression, get_node_text
     end
 
     -- 2) Select inner block (just like normal mode command vib)
-    local inner_children = get_query_captures([[(arguments _ @child (#not-eq? @child "(") (#not-eq? @child ")"))]], call_expression)
+    local inner_children = get_inner_children(arguments)
     do
         local current = {preceding_comma, integer_literal_444}
         local parent = get_shared_parent(current)
@@ -854,7 +854,7 @@ local function test_call_expression_first_argument(call_expression, get_node_tex
     end
 
     -- 2) Select inner block (just like normal mode command vib)
-    local inner_children = get_query_captures([[(arguments _ @child (#not-eq? @child "(") (#not-eq? @child ")"))]], call_expression)
+    local inner_children = get_inner_children(arguments)
     do
         local current = {integer_literal_123, trailing_comma}
         local parent = get_shared_parent(current)
@@ -967,7 +967,7 @@ local function test_type_arguments_middle_element(type_arguments, get_node_text,
     end
 
     -- 2) Select inner < (just like normal mode command vi<)
-    local inner_children = get_query_captures([[(type_arguments _ @child (#not-eq? @child "<") (#not-eq? @child ">"))]], type_arguments)
+    local inner_children = get_inner_children(type_arguments)
     do
         local current = {type_identifier_b, trailing_comma}
         local parent = get_shared_parent(current)
@@ -1000,7 +1000,7 @@ local function test_type_arguments_last_element(type_arguments, get_node_text, g
     end
 
     -- 2) Select inner < (just like normal mode command vi<)
-    local inner_children = get_query_captures([[(type_arguments _ @child (#not-eq? @child "<") (#not-eq? @child ">"))]], type_arguments)
+    local inner_children = get_inner_children(type_arguments)
     do
         local current = {preceding_comma, type_identifier_b}
         local parent = get_shared_parent(current)
@@ -1034,7 +1034,7 @@ local function test_type_arguments_first_element(type_arguments, get_node_text, 
     end
 
     -- 2) Select inner < (just like normal mode command vi<)
-    local inner_children = get_query_captures([[(type_arguments _ @child (#not-eq? @child "<") (#not-eq? @child ">"))]], type_arguments)
+    local inner_children = get_inner_children(type_arguments)
     do
         local current = {type_identifier_b, trailing_comma}
         local parent = get_shared_parent(current)
@@ -1102,7 +1102,7 @@ local function test_array_expression_middle_element(array_expression, get_node_t
     end
 
     -- 2) Select inner block (just like normal mode command vib)
-    local inner_children = get_query_captures([[(array_expression _ @child (#not-eq? @child "[") (#not-eq? @child "]"))]], array_expression)
+    local inner_children = get_inner_children(array_expression)
     do
         local current = {integer_literal_321, trailing_comma}
         local parent = get_shared_parent(current)
@@ -1136,7 +1136,7 @@ local function test_array_expression_last_element(array_expression, get_node_tex
     end
 
     -- 2) Select inner block (just like normal mode command vib)
-    local inner_children = get_query_captures([[(array_expression _ @child (#not-eq? @child "[") (#not-eq? @child "]"))]], array_expression)
+    local inner_children = get_inner_children(array_expression)
     do
         local current = {preceding_comma, integer_literal_444}
         local parent = get_shared_parent(current)
@@ -1170,7 +1170,7 @@ local function test_array_expression_first_element(array_expression, get_node_te
     end
 
     -- 2) Select inner block (just like normal mode command vib)
-    local inner_children = get_query_captures([[(array_expression _ @child (#not-eq? @child "[") (#not-eq? @child "]"))]], array_expression)
+    local inner_children = get_inner_children(array_expression)
     do
         local current = {integer_literal_123, trailing_comma}
         local parent = get_shared_parent(current)
@@ -1267,7 +1267,7 @@ local function test_block()
         local expression_statement_321 = block:child(2)
         assert(expression_statement_321:type() == "expression_statement")
         assert(get_node_text(expression_statement_321) == "321;")
-        local inner_children = get_query_captures([[(block _ @child (#not-eq? @child "{") (#not-eq? @child "}"))]], expression_statement)
+        local inner_children = get_inner_children(block)
         local current = {expression_statement_321}
         local parent = get_shared_parent(current)
 	local actual = climb_tree(current, parent, get_node_text, get_query_captures)
@@ -1307,7 +1307,7 @@ local function test_function_item_middle_argument(function_item, get_node_text, 
     end
 
     -- 2) Select inner block (just like normal mode command vib)
-    local inner_children = get_query_captures([[(parameters _ @child (#not-eq? @child "(") (#not-eq? @child ")"))]], function_item)
+    local inner_children = get_inner_children(parameters)
     do
         local current = {parameter_b, trailing_comma}
         local parent = get_shared_parent(current)
@@ -1344,7 +1344,7 @@ local function test_function_item_last_argument(function_item, get_node_text, ge
     end
 
     -- 2) Select inner block (just like normal mode command vib)
-    local inner_children = get_query_captures([[(parameters _ @child (#not-eq? @child "(") (#not-eq? @child ")"))]], function_item)
+    local inner_children = get_inner_children(parameters)
     do
         local current = {preceding_comma, parameter_c}
         local parent = get_shared_parent(current)
@@ -1389,7 +1389,7 @@ local function test_function_item_first_argument(function_item, get_node_text, g
     end
 
     -- 2) Select inner block (just like normal mode command vib)
-    local inner_children = get_query_captures([[(parameters _ @child (#not-eq? @child "(") (#not-eq? @child ")"))]], function_item)
+    local inner_children = get_inner_children(parameters)
     do
         local current = {parameter_a, trailing_comma}
         local parent = get_shared_parent(current)
