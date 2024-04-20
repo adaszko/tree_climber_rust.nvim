@@ -30,15 +30,15 @@ local DEBUG = false
 ---@param end_col number
 ---@return Selection
 local function make_subnode_selection(node, start_row, start_col, end_row, end_col)
-    local start_row, start_col, end_row, end_col = ts_utils.get_vim_range { start_row, start_col, end_row, end_col }
+    local sr, sc, er, ec = ts_utils.get_vim_range { start_row, start_col, end_row, end_col }
     return {
         variant = "subnode",
         payload = {
             node = node,
-            start_row = start_row,
-            start_col = start_col,
-            end_row = end_row,
-            end_col = end_col,
+            start_row = sr,
+            start_col = sc,
+            end_row = er,
+            end_col = ec,
         },
     }
 end
@@ -439,7 +439,7 @@ end
 
 
 ---@param input string
----@return TSNode, (fun(n:TSNode): string), (fun(q:string,n:TSNode):TSNode[])
+---@return TSNode, (fun(n:TSNode): string)
 local function make_test(input)
     local root_node = get_root_node(input)
 
