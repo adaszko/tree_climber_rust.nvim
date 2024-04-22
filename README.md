@@ -3,6 +3,14 @@ any language-agnostic plugin can.  Why would want to do that?  It speeds up freq
 requiring fewer steps to select the interesting bits. It lifts your editing routines up a semantic level from
 "visually select this word and the trailing comma" to "visually select this function argument".
 
+[nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter#incremental-selection) |  this plugin
+:--------------:|:-------------------------:
+![nvim-treesitter](https://raw.githubusercontent.com/adaszko/tree_climber_rust.nvim/demo/demo/treesitter.gif)  |  ![tree_climber_rust](https://raw.githubusercontent.com/adaszko/tree_climber_rust.nvim/demo/demo/tree_climber_rust.gif)
+
+The demo illustrates selecting a tuple element but that's not all the pluging offers.  Analogous selection
+behavior also works for any comma-separated syntax element, e.g. `vec![1, 2, 3]`, `<A, B, C>`, `f(1, 2, 3)`,
+function parameters, etc.
+
 # Setup
 
 Instruct your favorite Neovim package manager to clone `adaszko/tree_climber_rust.nvim` from GitHub and then
@@ -35,3 +43,8 @@ tree-sitter grammars to define jump points.
 
  * [Helix's builtin `expand_selection`, `shrink_selection`, `select_prev_sibling`, `select_next_sibling`](https://docs.helix-editor.com/keymap.html)
     * Demo: [Navigating the syntax tree with helix](https://www.youtube.com/watch?v=8BikrCguI6M)
+
+ * An alternative way to achieve similarish effects would be to define custom text objects via
+   [nvim-treesitter-textobjects](https://github.com/nvim-treesitter/nvim-treesitter-textobjects#text-objects-select)
+   custom [treesitter
+   queries](https://github.com/nvim-treesitter/nvim-treesitter-textobjects/blob/23b820146956b3b681c19e10d3a8bc0cbd9a1d4c/queries/rust/textobjects.scm).
