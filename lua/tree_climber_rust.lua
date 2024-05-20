@@ -271,16 +271,23 @@ local function climb_tree(current, parent, get_node_text)
         if #current == 1 then
             -- There's just one element selected => select it and its preceding/trailing comma
             local node = current[1]
+            local text = get_node_text(node)
             if is_rightmost_inner_child(node, parent) then
-                -- Last element => select it and it's optional preceding comma
-                if prev_sibling_text(node) == "," then
+                if text == "," then
+                    -- Syntax error where the rightmost node is a comma => select the comma and the left sibling
+                    return {node:prev_sibling(), node}
+                elseif prev_sibling_text(node) == "," then
+                    -- Last element => select it and it's optional preceding comma
                     return {node:prev_sibling(), node}
                 else
                     return {parent}
                 end
             elseif is_leftmost_inner_child(node, parent) then
-                -- First element => select it and it's optional trailing comma
-                if next_sibling_text(node) == "," then
+                if text == "," then
+                    -- Syntax error where the leftmost node is a comma => select the comma and the right sibling
+                    return {node, node:next_sibling()}
+                elseif next_sibling_text(node) == "," then
+                    -- First element => select it and it's optional trailing comma
                     return {node, node:next_sibling()}
                 else
                     return {parent}
@@ -1454,6 +1461,50 @@ local function test_function_item()
 end
 -- }}}
 
+
+local function test_bug1()
+    local function_item, get_node_text = make_test([[fn f() -> Vec<, bool> {}]])
+
+    --[[
+(function_item) ; [1:1 - 24]
+ "fn" ; [1:1 - 2]
+ name: (identifier) ; [1:4 - 4]
+ parameters: (parameters) ; [1:5 - 6]
+  "(" ; [1:5 - 5]
+  ")" ; [1:6 - 6]
+ "->" ; [1:8 - 9]
+ return_type: (generic_type) ; [1:11 - 21]
+  type: (type_identifier) ; [1:11 - 13]
+  type_arguments: (type_arguments) ; [1:14 - 21]
+   "<" ; [1:14 - 14]
+   "continue" ; [1:15 - 15]
+    "," ; [1:15 - 15]
+   (primitive_type) ; [1:17 - 20]
+   ">" ; [1:21 - 21]
+ body: (block) ; [1:23 - 24]
+  "{" ; [1:23 - 23]
+  "}" ; [1:24 - 24]
+    --]]
+
+    assert(function_item:type() == "function_item")
+    local generic_type = function_item:named_child(2)
+    assert(generic_type:type() == "generic_type")
+    local type_arguments = generic_type:child(1)
+    assert(type_arguments:type() == "type_arguments")
+
+    do
+        local error = type_arguments:child(1)
+        assert(error:type() == "ERROR")
+        assert(get_node_text(error) == ",")
+        local current = {error}
+        local inner_children = get_inner_children(type_arguments)
+        local parent = get_shared_parent(current)
+	local actual = climb_tree(current, parent, get_node_text)
+	assert(node_tables_equal(actual, inner_children))
+    end
+end
+
+
 M.test = function()
     test_tuple_expression()
     test_tuple_type()
@@ -1462,6 +1513,7 @@ M.test = function()
     test_array_expression()
     test_block()
     test_function_item()
+    test_bug1()
 end
 
 return M
