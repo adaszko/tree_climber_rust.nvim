@@ -276,21 +276,21 @@ local function climb_tree(current, parent, get_node_text)
                 if prev_sibling_text(node) == "," then
                     return {node:prev_sibling(), node}
                 else
-                    return {node}
+                    return {parent}
                 end
             elseif is_leftmost_inner_child(node, parent) then
                 -- First element => select it and it's optional trailing comma
                 if next_sibling_text(node) == "," then
                     return {node, node:next_sibling()}
                 else
-                    return {node}
+                    return {parent}
                 end
             else
                 -- Middle element => select it and it's optional trailing comma
                 if next_sibling_text(node) == "," then
                     return {node, node:next_sibling()}
                 else
-                    return {node}
+                    return {parent}
                 end
             end
         elseif is_leftmost_inner_child(current[1], parent) and is_rightmost_inner_child(current[#current], parent) then
