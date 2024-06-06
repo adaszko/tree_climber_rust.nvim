@@ -259,7 +259,7 @@ local function climb_tree(current, parent, get_node_text)
     if DEBUG then
         dump(string.format("parent_type: %s", parent_type))
     end
-    if parent_type == 'tuple_expression' or parent_type == 'tuple_type' or parent_type == 'tuple_pattern' or parent_type == 'arguments' or parent_type == 'type_arguments' or parent_type == 'array_expression' or parent_type == 'parameters' or parent_type == 'field_initializer_list' or parent_type == 'field_declaration_list' then
+    if parent_type == 'tuple_expression' or parent_type == 'tuple_type' or parent_type == 'tuple_pattern' or parent_type == 'tuple_struct_pattern' or parent_type == 'arguments' or parent_type == 'type_arguments' or parent_type == 'array_expression' or parent_type == 'parameters' or parent_type == 'field_initializer_list' or parent_type == 'field_declaration_list' then
 	if parent:child_count() == 3 and (parent_type == 'arguments' or parent_type == 'type_arguments' or parent_type == 'array_expression' or parent_type == 'parameters') then
 	    return {parent}
         end
